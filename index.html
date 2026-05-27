@@ -1,0 +1,1459 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8"/>
+<!-- 확대 방지를 위해 maximum-scale=1, user-scalable=no 유지 -->
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no"/>
+<meta name="referrer" content="strict-origin-when-cross-origin"/>
+<title>MAKGUI Chart — Kpop Music Rating & Ranking</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&display=swap" rel="stylesheet"/>
+<link href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.0.0/tabler-icons.min.css" rel="stylesheet"/>
+<script src="https://accounts.google.com/gsi/client" async defer></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
+<style>
+@font-face{font-family:'Freesentation';src:url('https://fastly.jsdelivr.net/gh/projectnoonnu/noonfonts_2209@1.0/Freesentation-4Regular.woff2') format('woff2');font-weight:400;}
+@font-face{font-family:'Freesentation';src:url('https://fastly.jsdelivr.net/gh/projectnoonnu/noonfonts_2209@1.0/Freesentation-5Medium.woff2') format('woff2');font-weight:500;}
+@font-face{font-family:'Freesentation';src:url('https://fastly.jsdelivr.net/gh/projectnoonnu/noonfonts_2209@1.0/Freesentation-6SemiBold.woff2') format('woff2');font-weight:600;}
+@font-face{font-family:'Freesentation';src:url('https://fastly.jsdelivr.net/gh/projectnoonnu/noonfonts_2209@1.0/Freesentation-7Bold.woff2') format('woff2');font-weight:700;}
+
+*{box-sizing:border-box;margin:0;padding:0;}
+:root{
+  --bg:#0a0a0f;--bg2:#12121a;--bg3:#1a1a25;--bg4:#22223a;
+  --border:#2a2a40;--border2:#3a3a55;
+  --text:#f0f0f8;--text2:#b8b8d8;--text3:#7a7a9e;
+  --amber:#f5a623;--amber2:#ffc857;--amber-dim:#3a2800;
+  --red:#e05252;--red-dim:#3a1212;
+  --gold-grad:linear-gradient(135deg,#f5a623,#ffd166);
+  --radius:10px;--radius-lg:16px;
+  --sans:'Freesentation',sans-serif;--serif:'Playfair Display',serif;--mono:'DM Mono',monospace;
+}
+
+/* 1. 가로 오버플로우 및 잘림 방지 (vw 제거, 100% 강제 고정) */
+html,body{
+  width: 100%;
+  max-width: 100%;
+  min-height: 100%;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--sans);
+  overflow-x: hidden; /* 가로 스크롤 완전 차단 */
+}
+
+body::before{content:'';position:fixed;inset:0;pointer-events:none;
+  background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");
+  opacity:.4;z-index:0;}
+
+header{position:sticky;top:0;z-index:100;background:rgba(10,10,15,.92);
+  backdrop-filter:blur(14px);border-bottom:1px solid var(--border);padding:0 1.25rem;}
+.header-inner{max-width:960px;margin:0 auto;height:60px;display:flex;align-items:center;justify-content:space-between;}
+.logo{display:flex;align-items:baseline;gap:10px;}
+.logo-name{font-family:var(--sans);font-size:22px;font-weight:700;letter-spacing:-0.5px;
+  background:var(--gold-grad);-webkit-background-clip:text;-webkit-text-fill-color:transparent;}
+.logo-sub{font-size:11px;color:var(--text3);letter-spacing:1.5px;text-transform:uppercase;}
+.logo-row{display:contents;} /* 데스크탑: header-inner flex에 자연스럽게 병합 */
+
+.nav-actions {display:flex; gap:10px; align-items:center;}
+.nav-btn{padding:7px 14px;border-radius:20px;font-size:13px;font-weight:500;cursor:pointer;
+  background:transparent;border:1px solid transparent;color:var(--text2);transition:all .15s;font-family:var(--sans); white-space:nowrap;}
+.nav-btn:hover{color:var(--text);border-color:var(--border2);}
+.nav-btn.active{background:var(--bg3);color:var(--text);border-color:var(--border2);}
+
+main{max-width:960px;margin:0 auto;padding:1.5rem 1.25rem 5rem;position:relative;z-index:1;}
+.section{display:none;animation:fadeUp .2s ease;}
+.section.active{display:block;}
+@keyframes fadeUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+
+/* SEARCH */
+.search-row{display:flex;gap:8px;margin-bottom:1.5rem;width:100%;}
+.search-input-wrap{flex:1;position:relative;}
+.search-input-wrap i{position:absolute;left:14px;top:50%;transform:translateY(-50%);color:var(--text3);font-size:18px;pointer-events:none;}
+#search-input{width:100%;height:50px;padding:0 16px 0 44px;background:var(--bg2);
+  border:1px solid var(--border2);border-radius:var(--radius-lg);color:var(--text);
+  font-family:var(--sans);font-size:15px;outline:none;transition:border-color .15s;}
+#search-input:focus{border-color:var(--amber);}
+#search-input::placeholder{color:var(--text3);font-size:13px;}
+
+.btn-search {
+  flex-shrink: 0;
+  height: 50px;
+  padding: 0 20px;
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border);
+  background: var(--bg2);
+  color: var(--text);
+  font-family: var(--sans);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  transition: opacity .15s;
+}
+.btn-search-icon { flex-shrink: 0; display: block; }
+.btn-search:hover{opacity:.88; background:var(--bg3);}
+.btn-search:disabled{opacity:.5;cursor:not-allowed;}
+
+/* RESULTS */
+.results-label{font-size:12px;color:var(--text3);letter-spacing:.6px;text-transform:uppercase;margin-bottom:10px;}
+.results-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:1.5rem;}
+@media(max-width:700px){.results-grid{grid-template-columns:repeat(2,1fr);}}
+@media(max-width:440px){.results-grid{grid-template-columns:1fr;}}
+.result-card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;}
+.result-card.selected{border-color:var(--amber);box-shadow:0 0 0 1px var(--amber);}
+
+/* 썸네일 노출을 위한 핵심 수정 (비율 고정) */
+.thumb-wrap {
+  position: relative;
+  overflow: hidden;
+  cursor: pointer;
+  aspect-ratio: 16 / 9;
+}
+.thumb-wrap:hover .play-overlay{opacity:1;}
+.play-overlay{position:absolute;inset:0;background:rgba(0,0,0,.45);display:flex;flex-direction:column;align-items:center;justify-content:center;opacity:0;transition:opacity .2s;color:#fff;gap:5px;pointer-events:none;}
+.play-overlay i{font-size:32px;filter:drop-shadow(0 2px 6px rgba(0,0,0,.5));}
+.play-overlay span{font-size:12px;font-weight:600;}
+
+.result-info{padding:10px;}
+.result-title{font-size:13px;font-weight:500;color:var(--text);line-height:1.5;
+  display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;margin-bottom:5px;}
+.result-channel{font-size:12px;color:var(--text2);}
+
+.search-loading{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:3rem 1rem;gap:16px;color:var(--text3);}
+.spinner{width:32px;height:32px;border:2px solid var(--border2);border-top-color:var(--amber);border-radius:50%;animation:spin .7s linear infinite;}
+@keyframes spin{to{transform:rotate(360deg)}}
+.search-loading span{font-size:14px;text-align:center;line-height:1.6;}
+.search-error{background:var(--red-dim);border:1px solid var(--red);border-radius:var(--radius);
+  padding:12px 16px;font-size:13px;color:#f08080;margin-bottom:1rem;display:flex;align-items:flex-start;gap:8px;line-height:1.6;}
+
+.divider{display:flex;align-items:center;gap:12px;margin:0 0 1.25rem;color:var(--text3);font-size:12px;}
+.divider::before,.divider::after{content:'';flex:1;height:1px;background:var(--border);}
+
+/* RATE PANEL */
+.rate-panel{display:none;}
+.rate-panel.visible{display:block;animation:fadeUp .2s ease;}
+.player-wrap{width:100%;aspect-ratio:16/9;background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius-lg);overflow:hidden;margin-bottom:1.25rem;}
+.player-wrap iframe{width:100%;height:100%;border:none;}
+.card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius-lg);padding:1.25rem;margin-bottom:1.25rem;}
+.card-title{font-size:12px;color:var(--text2);letter-spacing:.8px;text-transform:uppercase;margin-bottom:1rem;display:flex;align-items:center;gap:6px;font-weight:600;}
+.field-row{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px;}
+.field-row.single{grid-template-columns:1fr;}
+.field-group label{display:block;font-size:12px;color:var(--text2);letter-spacing:.6px;text-transform:uppercase;margin-bottom:6px;font-weight:500;}
+input[type=text]{width:100%;height:44px;padding:0 14px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius);color:var(--text);font-family:var(--sans);font-size:14px;outline:none;transition:border-color .15s;}
+input[type=text]:focus:not(.home-search-input-wrap input){border-color:var(--border2);}
+input[type=text]::placeholder{color:var(--text3);}
+
+/* CRITERIA */
+.criteria-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+@media(max-width:500px){.criteria-grid{grid-template-columns:1fr;}}
+.criterion{background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius);padding:14px;}
+.crit-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;}
+.crit-name{font-size:14px;font-weight:600;color:var(--text);display:flex;align-items:center;gap:6px;}
+.crit-name i{font-size:15px;color:var(--amber);}
+.crit-score{font-family:var(--mono);font-size:20px;font-weight:500;color:var(--amber2);}
+.crit-desc{font-size:12px;color:var(--text2);margin-bottom:10px;line-height:1.5;}
+input[type=range]{-webkit-appearance:none;appearance:none;width:100%;height:4px;border-radius:2px;background:var(--border2);outline:none;cursor:pointer;}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:18px;height:18px;border-radius:50%;background:var(--amber);cursor:pointer;box-shadow:0 0 0 4px rgba(245,166,35,.12);}
+input[type=range]::-moz-range-thumb{width:18px;height:18px;border-radius:50%;background:var(--amber);cursor:pointer;border:none;}
+
+/* AVG BAR */
+.avg-bar{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius-lg);padding:1.25rem 1.5rem;margin-bottom:1rem;display:flex;align-items:center;justify-content:space-between;}
+.avg-left .label{font-size:13px;color:var(--text2);text-transform:uppercase;letter-spacing:.8px;font-weight:600;}
+.avg-left .sub{font-size:12px;color:var(--text3);margin-top:3px;}
+.avg-right{display:flex;align-items:center;gap:14px;}
+.stars{display:flex;gap:3px;font-size:22px;}
+.s-full{color:var(--amber);}.s-half{color:var(--amber);opacity:.5;}.s-empty{color:var(--border2);}
+.avg-num-big{font-family:var(--mono);font-size:28px;font-weight:500;color:var(--text);}
+.avg-denom{font-size:13px;color:var(--text3);}
+
+.btn-row{display:flex;gap:10px;}
+.btn-primary{flex:1;height:48px;border:none;border-radius:var(--radius);font-family:var(--sans);font-size:15px;font-weight:600;cursor:pointer;background:var(--gold-grad);color:#1a0f00;transition:opacity .15s;}
+.btn-primary:hover{opacity:.88;}
+.btn-secondary{height:48px;padding:0 20px;background:transparent;border:1px solid var(--border2);border-radius:var(--radius);font-family:var(--sans);font-size:14px;font-weight:500;color:var(--text2);cursor:pointer;transition:all .15s;}
+.btn-secondary:hover{background:var(--bg3);color:var(--text);}
+
+/* RANK */
+.sort-bar{display:flex;gap:6px;align-items:center;margin-bottom:1rem;flex-wrap:wrap;}
+.sort-label{font-size:12px;color:var(--text3);margin-right:4px;font-weight:500;}
+.sort-btn{padding:6px 14px;border-radius:20px;font-size:12px;font-weight:500;cursor:pointer;background:transparent;border:1px solid var(--border);color:var(--text2);transition:all .15s;font-family:var(--sans);}
+.sort-btn:hover{border-color:var(--border2);color:var(--text);}
+.sort-btn.active{background:var(--amber-dim);color:var(--amber2);border-color:var(--amber);}
+.rank-header{display:grid;grid-template-columns:40px 1fr 90px 90px;gap:10px;align-items:center;padding:8px 14px;border-bottom:1px solid var(--border);margin-bottom:6px;}
+.rh{font-size:11px;color:var(--text2);letter-spacing:.6px;text-transform:uppercase;font-weight:600;}
+.rank-row{display:grid;grid-template-columns:40px 64px 1fr 90px 90px;gap:10px;align-items:center;padding:14px;border-radius:var(--radius);cursor:pointer;transition:background .12s;border:1px solid transparent;}
+.rank-row:hover{background:var(--bg2);}
+.rank-row.active{background:var(--bg2);border-color:var(--border2);}
+.rank-n{font-family:var(--mono);font-size:15px;color:var(--text3);text-align:center;}
+.rank-n.gold{color:var(--amber2);font-weight:500;}.rank-n.silver{color:#c0c0d0;}.rank-n.bronze{color:#cd7f32;}
+.rank-thumb{width:64px;height:36px;border-radius:5px;object-fit:cover;display:block;background:var(--bg3);}
+.rank-song{font-size:15px;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.rank-artist{font-size:13px;color:var(--text2);margin-top:2px;}
+.rank-score-cell{text-align:center;display:flex;flex-direction:column;align-items:center;gap:2px;}
+.rank-score-n{font-family:var(--mono);font-size:16px;font-weight:500;color:var(--text);}
+.rank-score-d{font-size:11px;color:var(--text3);}
+.rank-stars-cell{display:flex;gap:2px;justify-content:center;font-size:14px;}
+
+.detail-panel{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius-lg);padding:1.5rem;margin-top:.75rem;}
+.detail-head{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:1rem;gap:1rem;}
+.detail-title{font-family:var(--serif);font-size:20px;font-weight:500;color:var(--text);}
+.detail-artist{font-size:14px;color:var(--text2);margin-top:4px;}
+.detail-score-big{font-family:var(--mono);font-size:32px;font-weight:500;background:var(--gold-grad);-webkit-background-clip:text;-webkit-text-fill-color:transparent;}
+.detail-yt{width:100%;aspect-ratio:16/9;border-radius:var(--radius);overflow:hidden;margin-bottom:1rem;}
+.detail-yt iframe{width:100%;height:100%;border:none;}
+.breakdown{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+@media(max-width:500px){.breakdown{grid-template-columns:1fr;}}
+.bd-item{background:var(--bg3);border-radius:var(--radius);padding:12px;}
+.bd-top{display:flex;justify-content:space-between;align-items:center;}
+.bd-name{font-size:14px;color:var(--text2);font-weight:500;}
+.bd-val{font-family:var(--mono);font-size:16px;font-weight:500;color:var(--amber2);}
+.bd-bar-wrap{height:3px;background:var(--border);border-radius:2px;margin-top:10px;}
+.bd-bar{height:3px;border-radius:2px;background:var(--gold-grad);}
+
+/* 공감 버튼 스타일 */
+.btn-like {
+  background: var(--bg3); border: 1px solid var(--border);
+  padding: 8px 16px; border-radius: 20px; color: var(--text2);
+  cursor: pointer; font-family: var(--sans); font-weight: 600;
+  display: inline-flex; align-items: center; gap: 6px; transition: all 0.2s;
+}
+.btn-like.liked {
+  border-color: #e05252; color: #e05252; background: rgba(224,82,82,0.1);
+}
+
+.empty{text-align:center;padding:4rem 1rem;}
+.empty i{font-size:48px;margin-bottom:1rem;display:block;opacity:.4;color:var(--text3);}
+.empty p{font-size:15px;line-height:1.8;color:var(--text2);}
+
+.toast{position:fixed;bottom:28px;left:50%;transform:translateX(-50%);background:var(--bg3);border:1px solid var(--border2);color:var(--text);padding:10px 20px;border-radius:24px;font-size:14px;z-index:999;opacity:0;transition:opacity .2s;pointer-events:none;white-space:nowrap;}
+.toast.show{opacity:1;}
+/* 카카오 인앱브라우저 안내 배너 */
+.inapp-banner{display:none;position:fixed;bottom:0;left:0;right:0;z-index:9999;
+  background:#FEE500;color:#3A1D1D;padding:14px 16px;font-family:var(--sans);
+  font-size:14px;font-weight:600;box-shadow:0 -2px 12px rgba(0,0,0,.2);}
+.inapp-banner.show{display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
+.inapp-banner-text{flex:1;min-width:0;line-height:1.5;}
+.inapp-banner-btn{background:#3A1D1D;color:#FEE500;border:none;border-radius:20px;
+  padding:8px 16px;font-size:13px;font-weight:700;cursor:pointer;white-space:nowrap;font-family:var(--sans);}
+.inapp-banner-close{background:none;border:none;font-size:20px;cursor:pointer;
+  color:#3A1D1D;padding:0 4px;flex-shrink:0;line-height:1;}
+
+/* ---- 홈 모드: 헤더 최소화 ---- */
+header.home-mode { background: transparent; border-bottom: 1px solid transparent; box-shadow: none; }
+header.home-mode .logo { display: none; }
+header.home-mode .nav-btn,
+header.home-mode #header-google-signin,
+header.home-mode [style*="width:1px"] { display: none !important; }
+
+/* ---- Google-style 홈 레이아웃 ---- */
+.home-hero {
+  display: flex; flex-direction: column; align-items: center;
+  padding: 3rem 1rem 1.5rem; max-width: 700px; margin: 0 auto; width: 100%;
+  transition: padding .25s;
+}
+.home-hero.compact { padding: 1rem 1rem 0.5rem; }
+.home-logo-area { text-align: center; margin-bottom: 2rem; transition: all .25s; }
+.home-hero.compact .home-logo-area,
+.home-hero.compact .home-top5-block,
+.home-hero.compact .home-actions { display: none; }
+.home-logo-name {
+  font-size: clamp(2.4rem, 8vw, 4rem); font-weight: 700; letter-spacing: -1px; cursor: pointer;
+  background: var(--gold-grad); -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+  line-height: 1.1; font-family: var(--sans);
+}
+.home-logo-tagline { font-size: 14px; color: var(--text2); margin-top: 8px; }
+.home-search-row {
+  width: 100%; display: flex; gap: 10px; margin-bottom: 0;
+}
+.home-search-input-wrap {
+  flex: 1; display: flex; align-items: center; gap: 10px;
+  background: var(--bg2); border: 1.5px solid var(--border);
+  border-radius: 28px; padding: 0 20px; height: 54px;
+  transition: border-color .2s, box-shadow .2s;
+}
+.home-search-input-wrap:focus-within {
+  border-color: var(--amber); box-shadow: 0 0 0 3px rgba(245,166,35,.13);
+}
+.home-search-input-wrap input {
+  flex: 1; background: none; border: none !important; color: var(--text);
+  font-size: 16px; font-family: var(--sans); outline: none !important; padding: 0; min-width: 0;
+  box-shadow: none !important;
+}
+.home-search-input-wrap input:focus { border: none !important; outline: none !important; box-shadow: none !important; }
+.home-search-btn {
+  height: 54px; padding: 0 28px; border-radius: 28px; border: none;
+  background: var(--amber); color: #1a0f00; font-family: var(--sans);
+  font-size: 15px; font-weight: 700; cursor: pointer; white-space: nowrap;
+  flex-shrink: 0; transition: opacity .15s;
+}
+.home-search-btn:hover { opacity: .85; }
+.home-top5-block { width: 100%; margin-top: 2rem; }
+.home-actions {
+  display: flex; gap: 10px; flex-wrap: wrap; justify-content: center;
+  margin-top: 1.5rem; padding-top: 1.5rem; border-top: 1px solid var(--border);
+  width: 100%;
+}
+.home-action-btn {
+  height: 42px; padding: 0 22px; border-radius: 21px;
+  border: 1px solid var(--border2); background: var(--bg2); color: var(--text2);
+  font-family: var(--sans); font-size: 13px; font-weight: 600; cursor: pointer;
+  transition: all .15s; white-space: nowrap; flex: 1; min-width: 120px; max-width: 200px;
+}
+.home-action-btn:hover { border-color: var(--amber); color: var(--amber); }
+.home-results-area { width: 100%; max-width: 700px; margin: 0 auto; }
+
+/* TOP5 위젯 — 홈 내부에서는 헤더 숨김 */
+.home-top5-block .top5-header { margin-bottom: 10px; }
+
+/* MY RATINGS */
+.my-empty{text-align:center;padding:4rem 1rem;}
+.my-empty i{font-size:48px;margin-bottom:1rem;display:block;opacity:.4;color:var(--text3);}
+.my-empty p{font-size:15px;line-height:1.8;color:var(--text2);}
+.my-date-group{margin-bottom:1.75rem;}
+.my-date-label{font-size:11px;color:var(--text3);letter-spacing:1px;text-transform:uppercase;font-weight:600;
+  padding:6px 0;border-bottom:1px solid var(--border);margin-bottom:10px;}
+.my-card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);
+  padding:14px 16px;display:flex;align-items:center;gap:14px;transition:border-color .15s;}
+.my-card:hover{border-color:var(--border2);}
+.my-thumb{width:72px;height:40px;border-radius:6px;object-fit:cover;flex-shrink:0;background:var(--bg3);transition:opacity .15s;}
+.my-thumb:hover{opacity:.75;}
+.my-info{flex:1;min-width:0;}
+.my-title{font-size:14px;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.my-artist{font-size:12px;color:var(--text2);margin-top:2px;}
+.my-scores{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px;}
+.my-badge{font-size:11px;background:var(--bg3);border:1px solid var(--border);border-radius:20px;
+  padding:2px 8px;color:var(--text2);}
+.my-badge span{color:var(--amber2);font-weight:600;font-family:var(--mono);}
+.my-avg{font-family:var(--mono);font-size:20px;font-weight:500;color:var(--amber2);flex-shrink:0;text-align:right;}
+.my-avg-sub{font-size:10px;color:var(--text3);text-align:right;}
+/* TOP 5 위젯 */
+.top5-wrap{margin-bottom:1.75rem;}
+.top5-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;}
+.top5-title{font-size:12px;color:var(--text2);letter-spacing:1px;text-transform:uppercase;font-weight:600;display:flex;align-items:center;gap:6px;}
+.top5-more{font-size:12px;color:var(--text3);cursor:pointer;transition:color .15s;}
+.top5-more:hover{color:var(--amber);}
+.top5-row{display:flex;align-items:center;gap:12px;padding:10px 14px;border-radius:var(--radius);background:var(--bg2);border:1px solid var(--border);margin-bottom:6px;cursor:pointer;transition:border-color .15s;}
+.top5-row:hover{border-color:var(--border2);}
+.top5-rank{font-family:var(--mono);font-size:14px;font-weight:600;width:22px;text-align:center;flex-shrink:0;}
+.top5-rank.gold{color:var(--amber2);}
+.top5-rank.silver{color:#c0c0d0;}
+.top5-rank.bronze{color:#cd7f32;}
+.top5-rank.normal{color:var(--text3);}
+.top5-thumb{width:56px;height:32px;border-radius:5px;object-fit:cover;flex-shrink:0;background:var(--bg3);transition:opacity .15s;}
+.top5-thumb:hover{opacity:.75;}
+.top5-info{flex:1;min-width:0;}
+.top5-song{font-size:13px;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.top5-artist{font-size:11px;color:var(--text2);margin-top:1px;}
+.top5-score{font-family:var(--mono);font-size:15px;font-weight:500;color:var(--amber2);flex-shrink:0;}
+.top5-empty{text-align:center;padding:1.5rem;font-size:13px;color:var(--text3);background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);}
+
+.my-login-prompt{text-align:center;padding:4rem 1rem;color:var(--text2);font-size:15px;line-height:1.8;}
+
+@media(max-width:600px){
+  header{padding:0 1rem;}
+  .logo-sub{display:none;}
+  .nav-btn{padding:6px 11px;font-size:12px;}
+  main{padding:1rem 1rem 4rem;}
+  
+  /* 모바일 환경 폰트 16px 유지하여 iOS 화면 줌인 방지 */
+  #search-input{font-size:16px;height:46px;} 
+  #search-input::placeholder{font-size:13px;}
+  
+  /* 2. 모바일 검색 버튼 비어보임 문제 해결 (배경색 및 버튼 구조 최적화) */
+  /* 모바일 헤더 2줄 레이아웃 */
+  header:not(.home-mode) { padding: 0 1rem; }
+  header:not(.home-mode) .header-inner {
+    height: auto; flex-direction: column; align-items: stretch;
+    padding: 8px 0; gap: 6px;
+  }
+  header:not(.home-mode) .logo-row {
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  header:not(.home-mode) #user-info {
+    font-size: 12px; display: flex; align-items: center; gap: 6px;
+  }
+  header:not(.home-mode) .nav-actions-wrap {
+    display: flex; flex-wrap: wrap; gap: 6px;
+  }
+
+  .btn-search {
+    width: 46px; height: 46px; padding: 0;
+    background: var(--bg3); border: 1px solid var(--border);
+    border-radius: var(--radius); display: flex; align-items: center;
+    justify-content: center; flex-shrink: 0;
+  }
+  .btn-search .btn-label { display: none; }
+  .btn-search-icon { width: 22px; height: 22px; }
+
+  /* 홈 모바일 */
+  .home-hero { padding: 2rem 1rem 1rem; }
+  .home-logo-name { font-size: 2.6rem; }
+  .home-search-row { flex-direction: row; gap: 8px; }
+  .home-search-input-wrap { height: 48px; padding: 0 14px; }
+  .home-search-btn { height: 48px; padding: 0 18px; font-size: 14px; }
+  .home-actions { gap: 8px; }
+  .home-action-btn { height: 38px; padding: 0 16px; font-size: 12px; }
+
+  .field-row{grid-template-columns:1fr;}
+  .card{padding:1rem;}
+  input[type=text]{height:46px;font-size:16px;}
+  .crit-name{font-size:15px;}
+  .crit-score{font-size:22px;}
+  input[type=range]::-webkit-slider-thumb{width:22px;height:22px;}
+  .avg-num-big{font-size:26px;}
+  .stars{font-size:20px;}
+  .btn-primary{height:50px;font-size:15px;}
+  .btn-secondary{height:50px;font-size:14px;}
+  .sort-btn{padding:5px 11px;font-size:12px;}
+
+  /* 모바일 랭킹: 번호 + 썸네일 + 정보 (점수는 정보 아래 줄바꿈) */
+  .rank-header { display: none; }
+  .rank-row {
+    grid-template-columns: 28px 56px 1fr;
+    grid-template-rows: auto auto;
+  }
+  .rank-thumb { width: 56px; height: 32px; }
+  .rank-stars-cell { display: none; }
+  .rank-score-cell {
+    grid-column: 3;
+    display: flex; flex-direction: row; align-items: center;
+    gap: 8px; text-align: left; margin-top: 5px; flex-wrap: wrap;
+  }
+  .rank-score-cell .rank-score-n { font-size: 15px; }
+  .rank-score-cell .rank-score-d { font-size: 10px; }
+  .rank-song { font-size: 14px; }
+  .rank-artist { font-size: 12px; }
+  .detail-panel{padding:1.1rem;}
+  .detail-title{font-size:18px;}
+  .detail-score-big{font-size:28px;}
+}
+</style>
+</head>
+<body>
+
+<header id="main-header" class="home-mode">
+  <div class="header-inner">
+    <!-- 1행: 로고(좌) + 로그인정보(우) -->
+    <div class="logo-row">
+      <div class="logo" onclick="resetAll();switchTab('rate')" style="cursor:pointer;" title="Go Home">
+        <span class="logo-name">MAKGUI Chart</span>
+        <span class="logo-sub">Kpop Music Rating & Ranking</span>
+      </div>
+      <div id="user-info" style="font-size:13px;color:var(--amber);font-weight:600;display:flex;align-items:center;gap:6px;"></div>
+    </div>
+    <!-- Row 2: Nav buttons -->
+    <nav class="nav-actions nav-actions-wrap">
+      <div id="header-google-signin"></div>
+      <button class="nav-btn" onclick="switchTab('rank')" id="nav-rank">🏆 Rankings</button>
+      <button class="nav-btn" onclick="switchTab('my')" id="nav-my" style="display:none;">📝 My Ratings</button>
+    </nav>
+  </div>
+</header>
+
+<main>
+
+<div class="section active" id="section-rate">
+
+  <!-- ① Google-style 히어로 영역 -->
+  <div class="home-hero" id="home-hero">
+
+    <!-- 큰 로고 -->
+    <div class="home-logo-area">
+      <div class="home-logo-name" onclick="resetAll()">MAKGUI Chart</div>
+      <div class="home-logo-tagline">Kpop Music Rating & Ranking</div>
+    </div>
+
+    <!-- 큰 검색창 -->
+    <div class="home-search-row">
+      <div class="home-search-input-wrap">
+        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#f5a623" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;">
+          <circle cx="11" cy="11" r="7"/><line x1="16.5" y1="16.5" x2="22" y2="22"/>
+        </svg>
+        <input type="text" id="search-input" placeholder="Search by artist or song name (e.g. BTS MV, BLACKPINK MV)…"
+          onkeydown="if(event.key==='Enter')doSearch(false)"/>
+      </div>
+      <button class="home-search-btn" id="search-btn" onclick="doSearch(false)">Search</button>
+    </div>
+
+    <!-- TOP5 + 홈 상세 -->
+    <div class="home-top5-block">
+      <div class="top5-wrap" id="top5-wrap">
+        <div class="top5-header">
+          <div class="top5-title">🏆 Live TOP 5 Rankings</div>
+          <div class="top5-more" onclick="switchTab('rank')">View All →</div>
+        </div>
+        <div id="top5-list"></div>
+      </div>
+      <div id="home-detail"></div>
+    </div>
+
+    <!-- 하위 메뉴 버튼 -->
+    <div class="home-actions" id="home-actions">
+      <div id="home-google-signin"></div>
+      <button class="home-action-btn" onclick="switchTab('rank')">🏆 Full Rankings</button>
+      <button class="home-action-btn" id="home-my-btn" onclick="switchTab('my')" style="display:none;">📝 My Ratings</button>
+    </div>
+  </div>
+
+  <!-- ② 검색 결과 & 직접입력 & 평가패널 -->
+  <div class="home-results-area">
+    <div id="results-area"></div>
+    <div class="rate-panel" id="rate-panel">
+      <div class="player-wrap" id="yt-frame">
+        <div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;color:var(--text3);">
+          <i class="ti ti-player-play" style="font-size:48px;opacity:.3"></i>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title"><i class="ti ti-music"></i>Song Info</div>
+        <div class="field-row">
+          <div class="field-group"><label>Song Title</label><input type="text" id="song-title" placeholder="Song title"/></div>
+          <div class="field-group"><label>Artist</label><input type="text" id="song-artist" placeholder="Artist name"/></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title"><i class="ti ti-adjustments-horizontal"></i>Rating Criteria
+          <span style="font-weight:400;font-size:11px;margin-left:4px;color:var(--text3)">(Score each 0–10, up to 2 decimal places)</span>
+        </div>
+        <div class="criteria-grid" id="criteria-grid"></div>
+      </div>
+
+      <div class="avg-bar">
+        <div class="avg-left">
+          <div class="label">Overall Average</div>
+          <div class="sub">Average of 5 criteria</div>
+        </div>
+        <div class="avg-right">
+          <div class="stars" id="avg-stars"></div>
+          <div><span class="avg-num-big" id="avg-num">5.00</span><span class="avg-denom"> / 10</span></div>
+        </div>
+      </div>
+
+      <div class="btn-row">
+        <button class="btn-secondary" onclick="resetAll()">↩ Reset</button>
+        <button class="btn-primary" onclick="submitRating()">✓ Submit Rating</button>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<div class="section" id="section-rank">
+  <div class="sort-bar">
+    <span class="sort-label">Sort by</span>
+    <button class="sort-btn active" onclick="setSort('avg')" id="sort-avg">Overall</button>
+    <button class="sort-btn" onclick="setSort('play')" id="sort-play">Musicianship</button>
+    <button class="sort-btn" onclick="setSort('vocal')" id="sort-vocal">Vocals</button>
+    <button class="sort-btn" onclick="setSort('mood')" id="sort-mood">Vibe</button>
+    <button class="sort-btn" onclick="setSort('genre')" id="sort-genre">Genre</button>
+    <button class="sort-btn" onclick="setSort('originality')" id="sort-originality">Originality</button>
+  </div>
+  <div class="rank-header">
+    <div class="rh" style="text-align:center">#</div>
+    <div class="rh"></div>
+    <div class="rh">Song / Artist</div>
+    <div class="rh" style="text-align:center">Score</div>
+    <div class="rh" style="text-align:center">Stars</div>
+  </div>
+  <div id="rank-list"></div>
+  <div id="rank-detail"></div>
+</div>
+
+<div class="section" id="section-my">
+  <div id="my-ratings-area"></div>
+</div>
+
+</main>
+
+<div class="toast" id="toast"></div>
+
+<!-- 카카오 인앱브라우저 안내 배너 -->
+<div class="inapp-banner" id="inapp-banner">
+  <div class="inapp-banner-text">
+    🔒 Google login is restricted in KakaoTalk's in-app browser.<br>
+    <strong>Please open in Chrome or Safari.</strong>
+  </div>
+  <button class="inapp-banner-btn" onclick="openExternalBrowser()">Open in Browser</button>
+  <button class="inapp-banner-close" onclick="document.getElementById('inapp-banner').classList.remove('show')">✕</button>
+</div>
+
+<script>
+// 유튜브 URL에 추가할 공통 파라미터 생성 함수
+function getYtParams() {
+  const o = (window.location.origin && window.location.origin !== 'null') ? window.location.origin : 'https://localhost';
+  const w = window.location.href;
+  return `origin=${encodeURIComponent(o)}&widget_referrer=${encodeURIComponent(w)}`;
+}
+
+// ---------------- 사용자 (로그인) 시스템 ----------------
+let currentUser = null;
+
+const GOOGLE_CLIENT_ID = '311516162770-114keptap6s6l0c5a3nu46l9fkb8c4uo.apps.googleusercontent.com';
+
+function initGoogleSignIn() {
+  if(!window.google || !google.accounts) return;
+  google.accounts.id.initialize({
+    client_id: GOOGLE_CLIENT_ID,
+    callback: handleGoogleLogin,
+    auto_select: false
+  });
+  // 헤더 버튼 (데스크탑/랭킹탭)
+  const headerBtn = document.getElementById('header-google-signin');
+  if(headerBtn) {
+    google.accounts.id.renderButton(headerBtn, {
+      theme: 'filled_black', size: 'medium', shape: 'pill', text: 'signin_with', locale: 'en'
+    });
+  }
+  // 홈 화면 버튼 (모바일 포함)
+  const homeBtn = document.getElementById('home-google-signin');
+  if(homeBtn) {
+    google.accounts.id.renderButton(homeBtn, {
+      theme: 'filled_black', size: 'medium', shape: 'pill', text: 'signin_with', locale: 'en'
+    });
+  }
+}
+
+function initAuth() {
+  const savedUser = localStorage.getItem('melodyrank_user');
+  if(savedUser) { currentUser = JSON.parse(savedUser); updateUserUI(); }
+  // GSI 스크립트 로드 완료 후 버튼 렌더링
+  if(window.google && google.accounts) {
+    initGoogleSignIn();
+  } else {
+    window.onGoogleLibraryLoad = initGoogleSignIn;
+    // 폴백: 1초 후 재시도 (모바일 느린 로딩 대비)
+    setTimeout(initGoogleSignIn, 1000);
+    setTimeout(initGoogleSignIn, 2500);
+  }
+}
+
+function handleGoogleLogin(response) {
+  const payload = parseJwt(response.credential);
+  currentUser = { id: payload.sub, name: payload.name, picture: payload.picture };
+  localStorage.setItem('melodyrank_user', JSON.stringify(currentUser));
+  updateUserUI();
+  toast(`Welcome, ${currentUser.name}!`);
+}
+
+function parseJwt(token) {
+  var base64Url = token.split('.')[1];
+  var base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+  var jsonPayload = decodeURIComponent(atob(base64).split('').map(function(c) {
+      return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+  }).join(''));
+  return JSON.parse(jsonPayload);
+}
+
+function logout() {
+  currentUser = null;
+  localStorage.removeItem('melodyrank_user');
+  updateUserUI();
+  toast('You have been logged out.');
+}
+
+function updateUserUI() {
+  const btnGoogle = document.getElementById('header-google-signin');
+  const btnMock = null; // 테스트 로그인 제거됨
+  const btnMy = document.getElementById('nav-my');
+  const homeMy = document.getElementById('home-my-btn');
+  const homeLoginBtn = null; // 테스트 로그인 제거됨
+  const homeGoogleBtn = document.getElementById('home-google-signin');
+  const ui = document.getElementById('user-info');
+
+  if(currentUser) {
+    if(btnGoogle) btnGoogle.style.display = 'none';
+    if(btnMock) btnMock.style.display = 'none';
+    if(btnMy) btnMy.style.display = 'block';
+    if(homeMy) homeMy.style.display = 'block';
+    if(homeLoginBtn) homeLoginBtn.style.display = 'none';
+    if(homeGoogleBtn) homeGoogleBtn.style.display = 'none';
+    const userHtml = currentUser.picture
+      ? `<img src="${currentUser.picture}" style="width:24px;height:24px;border-radius:50%;object-fit:cover;"> <span>${currentUser.name}</span>`
+      : `👤 <span>${currentUser.name}</span>`;
+    const logoutBtn = `<button onclick="logout()" style="margin-left:8px;padding:5px 12px;border-radius:20px;border:1px solid var(--border2);background:transparent;color:var(--text2);font-family:var(--sans);font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap;transition:all .15s;" onmouseover="this.style.borderColor='var(--red)';this.style.color='var(--red)'" onmouseout="this.style.borderColor='var(--border2)';this.style.color='var(--text2)'">Log out</button>`;
+    ui.innerHTML = userHtml + logoutBtn;
+  } else {
+    if(btnGoogle) btnGoogle.style.display = 'block';
+    if(btnMock) btnMock.style.display = 'block';
+    if(btnMy) btnMy.style.display = 'none';
+    if(homeMy) homeMy.style.display = 'none';
+    if(homeLoginBtn) homeLoginBtn.style.display = 'block';
+    if(homeGoogleBtn) homeGoogleBtn.style.display = 'block';
+    ui.innerHTML = '';
+    const mySection = document.getElementById('section-my');
+    if(mySection && mySection.classList.contains('active')) switchTab('rate');
+  }
+}
+
+// ---------------- Firebase 초기화 ----------------
+const firebaseConfig = {
+  apiKey: "AIzaSyCNViUpjRxFLoBjuWVslizhmrI3QDx-8HU",
+  authDomain: "makgui-chart.firebaseapp.com",
+  databaseURL: "https://makgui-chart-default-rtdb.firebaseio.com",
+  projectId: "makgui-chart",
+  storageBucket: "makgui-chart.firebasestorage.app",
+  messagingSenderId: "311516162770",
+  appId: "1:311516162770:web:5806abaad7e3b2672a9b0b"
+};
+firebase.initializeApp(firebaseConfig);
+const db = firebase.database();
+
+// 실시간 로컬 캐시
+let dbRatings = [];
+let dbInteractions = {};
+
+// ratings 실시간 리스너
+db.ref('ratings').on('value', snap => {
+  dbRatings = snap.val() ? Object.values(snap.val()) : [];
+  renderRank();
+  renderTop5();
+  if(selectedHomeId) showHomeDetail(selectedHomeId);
+});
+
+// interactions 실시간 리스너
+db.ref('interactions').on('value', snap => {
+  dbInteractions = snap.val() || {};
+  renderRank();
+  renderTop5();
+  if(selectedHomeId) showHomeDetail(selectedHomeId);
+});
+
+// 읽기 함수 — 캐시에서 즉시 반환
+const loadRatings = () => dbRatings;
+const loadInteractions = () => {
+  // Firebase 구조(object)를 기존 코드 호환 구조(array)로 변환
+  const result = {};
+  Object.entries(dbInteractions).forEach(([vid, data]) => {
+    result[vid] = {
+      likes: data.likes ? Object.keys(data.likes) : [],
+      comments: data.comments
+        ? Object.values(data.comments).sort((a, b) => a.id - b.id)
+        : []
+    };
+  });
+  return result;
+};
+
+// ---------------- 기본 변수 ----------------
+const CRITERIA=[
+  {key:'play',       name:'Musicianship', desc:'Instruments, arrangement & technical skill', icon:'ti-guitar-pick'},
+  {key:'vocal',      name:'Vocals',       desc:'Pitch, emotion, tone & pronunciation',        icon:'ti-microphone'},
+  {key:'mood',       name:'Vibe',         desc:'Atmosphere, immersion & emotional delivery',  icon:'ti-wave-sine'},
+  {key:'genre',      name:'Genre',        desc:'Genre identity & stylistic expression',        icon:'ti-music'},
+  {key:'originality',name:'Originality',  desc:'Creativity, freshness & uniqueness',          icon:'ti-sparkles'},
+];
+let scores={play:5,vocal:5,mood:5,genre:5,originality:5};
+let sortKey='avg';
+let selectedRankId=null;
+
+let currentSearchQuery = '';
+let currentNextPageToken = '';
+let currentSearchResults = [];
+
+/* SEARCH (더보기 페이지네이션 기능 추가) */
+async function doSearch(isLoadMore = false){
+  const q = isLoadMore ? currentSearchQuery : document.getElementById('search-input').value.trim();
+  if(!q){toast('⚠️ Please enter a search term.');return;}
+  
+  const area = document.getElementById('results-area');
+  const btn = document.getElementById('search-btn');
+
+  if(!isLoadMore) {
+    
+    area.innerHTML=`<div class="search-loading"><div class="spinner"></div><span>유튜브에서 <strong>"${q}"</strong> 검색 중…</span></div>`;
+    btn.disabled=true;
+    const hero = document.getElementById('home-hero');
+    if(hero) hero.classList.add('compact');
+  }
+
+  // 발급받은 유튜브 API 키
+  const API_KEY = 'AIzaSyDyEFH9Sg0HtNQP4wkN8pVw6qf3OeAix48'; 
+  let url = `https://www.googleapis.com/youtube/v3/search?part=snippet&maxResults=6&q=${encodeURIComponent(q)}&type=video&videoCategoryId=10&key=${API_KEY}`;
+  
+  if (isLoadMore && currentNextPageToken) {
+    url += `&pageToken=${currentNextPageToken}`;
+  } else {
+    currentSearchQuery = q;
+    currentSearchResults = [];
+  }
+
+  try{
+    const res = await fetch(url);
+    if(!res.ok) throw new Error(`Search error (${res.status}): Please check your API key.`);
+    
+    const data = await res.json();
+    if(!data.items || !data.items.length) {
+      if(isLoadMore) { toast('No more results.'); return; }
+      else throw new Error('No results found. Try a different search.');
+    }
+
+    const decodeHtml = (html) => {
+      const txt = document.createElement("textarea"); txt.innerHTML = html; return txt.value;
+    };
+
+    const newResults = data.items.map(item => ({
+      videoId: item.id.videoId,
+      title: decodeHtml(item.snippet.title),
+      channel: decodeHtml(item.snippet.channelTitle),
+      artist: decodeHtml(item.snippet.channelTitle) 
+    }));
+
+    currentNextPageToken = data.nextPageToken || '';
+    if (isLoadMore) currentSearchResults = currentSearchResults.concat(newResults);
+    else currentSearchResults = newResults;
+
+    renderResults(currentSearchResults, q, currentNextPageToken !== '');
+  }catch(err){
+    if(!isLoadMore) area.innerHTML=`<div class="search-error"><i class="ti ti-alert-triangle"></i><span>${err.message}</span></div>`;
+    else toast(err.message);
+  }finally{
+    btn.disabled=false;
+  }
+}
+
+function cardGrad(s){
+  let h=0;for(let c of s)h=Math.imul(31,h)+c.charCodeAt(0)|0;
+  const hue=(h>>>0)%360;
+  return`linear-gradient(135deg,hsl(${hue},45%,22%),hsl(${(hue+60)%360},55%,33%))`;
+}
+
+function renderResults(results, q, hasNextPage){
+  const area=document.getElementById('results-area');
+  
+  
+  let html = `
+    <div class="results-label">${results.length} results for "${q}" — click to play</div>
+    <div class="results-grid">
+      ${results.map((r,i)=>`
+        <div class="result-card" id="rc-${i}" onclick="selectResult(${i},'${e(r.videoId)}','${e(r.title)}','${e(r.artist||r.channel)}')">
+          <div class="thumb-wrap" style="background:${cardGrad(r.title+(r.artist||r.channel))}">
+            <img 
+              src="https://img.youtube.com/vi/${r.videoId}/hqdefault.jpg" 
+              style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;border:none;pointer-events:none;" 
+              alt="썸네일" loading="lazy" 
+            />
+            <div class="play-overlay"><i class="ti ti-player-play-filled"></i><span>Play Now</span></div>
+          </div>
+          <div class="result-info">
+            <div class="result-title">${r.title}</div>
+            <div class="result-channel"><i class="ti ti-user" style="font-size:10px;vertical-align:-1px"></i> ${r.artist||r.channel}</div>
+          </div>
+        </div>`).join('')}
+    </div>`;
+
+  // 더보기 버튼 추가
+  if(hasNextPage) {
+    html += `<button onclick="doSearch(true)" style="width:100%; height:48px; border-radius:var(--radius); background:var(--bg3); border:1px solid var(--border); color:var(--text); font-family:var(--sans); font-size:14px; font-weight:600; cursor:pointer; transition:background 0.2s; display:flex; align-items:center; justify-content:center; gap:6px; margin-bottom:1rem;">
+      <i class="ti ti-plus" style="font-size:16px;"></i> Load More Results
+    </button>`;
+  }
+  area.innerHTML = html;
+}
+
+function e(s){return String(s||'').replace(/\\/g,'\\\\').replace(/'/g,"\\'").replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+
+function selectResult(idx,videoId,title,artist){
+  document.querySelectorAll('.result-card').forEach(c=>c.classList.remove('selected'));
+  const card=document.getElementById('rc-'+idx);
+  if(card) card.classList.add('selected');
+  loadVideo(videoId,title,artist);
+}
+
+function extractId(url){
+  if(!url) return null;
+  const m=url.match(/(?:v=|youtu\.be\/|embed\/)([A-Za-z0-9_-]{11})/);
+  return m?m[1]:null;
+}
+let _urlT=null;
+let _curVid=null;
+function playVideo(vid){
+  _curVid=vid;
+  document.getElementById('yt-frame').innerHTML=`<iframe src="https://www.youtube-nocookie.com/embed/${vid}?autoplay=1&enablejsapi=1&${getYtParams()}" referrerpolicy="strict-origin-when-cross-origin" allow="accelerometer;autoplay;clipboard-write;encrypted-media;gyroscope;picture-in-picture" allowfullscreen></iframe>`;
+}
+
+function loadVideo(videoId,title,artist){
+  _curVid=videoId;
+  const frame=document.getElementById('yt-frame');
+  const grad=cardGrad((title||videoId)+(artist||''));
+  
+  // 플레이 버튼 유튜브 심볼(빨간 네모) 유지
+  frame.innerHTML=`
+    <div style="position:relative;width:100%;height:100%;cursor:pointer;background:${grad}" onclick="playVideo('${videoId}')">
+      <img 
+        src="https://img.youtube.com/vi/${videoId}/hqdefault.jpg" 
+        style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;border:none;pointer-events:none;" 
+        alt="썸네일" 
+      />
+      <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;">
+        <div style="filter: drop-shadow(0 4px 12px rgba(0,0,0,.6)); transition: transform 0.2s;" onmouseover="this.style.transform='scale(1.1)'" onmouseout="this.style.transform='scale(1)'">
+          <i class="ti ti-brand-youtube-filled" style="font-size:68px;color:#ff0000;"></i>
+        </div>
+      </div>
+    </div>`;
+  
+  if(title) document.getElementById('song-title').value=title;
+  if(artist) document.getElementById('song-artist').value=artist;
+  document.getElementById('rate-panel').classList.add('visible');
+  setTimeout(()=>document.getElementById('rate-panel').scrollIntoView({behavior:'smooth',block:'nearest'}),100);
+}
+
+function buildGrid(){
+  document.getElementById('criteria-grid').innerHTML=CRITERIA.map(c=>`
+    <div class="criterion" id="crit-wrap-${c.key}">
+      <div class="crit-head">
+        <span class="crit-name"><i class="ti ${c.icon}"></i>${c.name}</span>
+        <span class="crit-score" id="sc-${c.key}">${scores[c.key].toFixed(2)}</span>
+      </div>
+      <div class="crit-desc">${c.desc}</div>
+      <input type="range" min="0" max="10" step="0.01" value="${scores[c.key]}"
+        id="range-${c.key}" oninput="updateScore('${c.key}',parseFloat(this.value))"/>
+      <div class="crit-limit-msg" id="msg-${c.key}" style="display:none;font-size:11px;color:var(--amber);margin-top:4px;">⚠️ Max or zero score allowed for up to 2 criteria only</div>
+    </div>`).join('');
+}
+
+const MAX_EXTREME = 2; // 만점(10) 또는 0점을 줄 수 있는 최대 항목 수
+
+function updateScore(k, v) {
+  const isExtreme = v === 10 || v === 0;
+
+  if(isExtreme) {
+    // 현재 극단값(0 또는 10)인 다른 항목 개수 (자신 제외)
+    const otherExtremeCount = CRITERIA.filter(c =>
+      c.key !== k && (scores[c.key] === 10 || scores[c.key] === 0)
+    ).length;
+
+    if(otherExtremeCount >= MAX_EXTREME) {
+      // 제한 초과 — 슬라이더를 직전 허용값으로 되돌리기
+      const clamped = v === 10 ? 9.99 : 0.01;
+      scores[k] = clamped;
+      document.getElementById('range-' + k).value = clamped;
+      document.getElementById('sc-' + k).textContent = clamped.toFixed(2);
+      document.getElementById('msg-' + k).style.display = 'block';
+      setTimeout(() => {
+        const msg = document.getElementById('msg-' + k);
+        if(msg) msg.style.display = 'none';
+      }, 2500);
+      updateAvg();
+      return;
+    }
+  }
+
+  scores[k] = v;
+  document.getElementById('sc-' + k).textContent = v.toFixed(2);
+  const msg = document.getElementById('msg-' + k);
+  if(msg) msg.style.display = 'none';
+  updateAvg();
+}
+const calcAvg=()=>CRITERIA.reduce((s,c)=>s+scores[c.key],0)/CRITERIA.length;
+function renderStars(avg10){
+  const v=avg10/2;
+  return[1,2,3,4,5].map(i=>v>=i?'<span class="s-full">★</span>':v>=i-.5?'<span class="s-half">★</span>':'<span class="s-empty">★</span>').join('');
+}
+function updateAvg(){const a=calcAvg();document.getElementById('avg-num').textContent=a.toFixed(2);document.getElementById('avg-stars').innerHTML=renderStars(a);}
+function resetAll(){
+  _curVid=null;
+  scores={play:5,vocal:5,mood:5,genre:5,originality:5};
+  ['song-title','song-artist'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('yt-frame').innerHTML=`<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;color:var(--text3);"><i class="ti ti-player-play" style="font-size:48px;opacity:.3"></i></div>`;
+  document.getElementById('rate-panel').classList.remove('visible');
+  document.getElementById('results-area').innerHTML='';
+  
+  document.getElementById('search-input').value='';
+  selectedHomeId = null;
+  document.getElementById('home-detail').innerHTML='';
+  document.querySelectorAll('.top5-row').forEach(r => r.style.borderColor = '');
+  const hero = document.getElementById('home-hero');
+  if(hero) hero.classList.remove('compact');
+  buildGrid();updateAvg();
+}
+
+function submitRating(){
+  if(!currentUser) {
+    toast('⚠️ Please log in to submit a rating.');
+    return;
+  }
+
+  const title=document.getElementById('song-title').value.trim();
+  const artist=document.getElementById('song-artist').value.trim();
+
+  if(!_curVid||!title||!artist){toast('⚠️ Please select a song and fill in title & artist.');return;}
+  if(!extractId(`https://www.youtube.com/watch?v=${_curVid}`)){toast('⚠️ 올바른 유튜브 링크를 입력해 주세요.');return;}
+  
+  const ratings = loadRatings();
+  
+  // [1계정 1곡 제한] 신뢰성 확보
+  const hasRated = ratings.some(r => r.videoId === _curVid && r.userId === currentUser.id);
+  if(hasRated) {
+    toast('⚠️ You have already rated this song.');
+    return;
+  }
+
+  const newRating = {
+    id: Date.now(), 
+    videoId: _curVid, 
+    title, artist, 
+    scores: {...scores}, 
+    avg: calcAvg(), 
+    date: new Date().toLocaleDateString('ko-KR'),
+    userId: currentUser.id,
+    userName: currentUser.name
+  };
+
+  db.ref('ratings').push(newRating);
+  toast('✅ Rating submitted!');
+  resetAll();
+  switchTab('rank');
+}
+
+function setSort(k){
+  sortKey=k;
+  document.querySelectorAll('.sort-btn').forEach(b=>b.classList.remove('active'));
+  document.getElementById('sort-'+k).classList.add('active');
+  renderRank();
+}
+
+// ---------------- 랭킹 및 통합 통계 계산 ----------------
+function renderRank(){
+  const ratings=loadRatings();
+  const list=document.getElementById('rank-list');
+  if(!ratings.length){
+    list.innerHTML=`<div class="empty"><i class="ti ti-music-off"></i><p>No songs rated yet.<br>Be the first to rate a song!</p></div>`;
+    document.getElementById('rank-detail').innerHTML='';return;
+  }
+
+  // 곡(videoId) 기준으로 평가 데이터 합산 및 그룹화
+  const aggMap = {};
+  ratings.forEach(r => {
+    if(!aggMap[r.videoId]) {
+      aggMap[r.videoId] = { videoId: r.videoId, title: r.title, artist: r.artist, count: 0, totalAvg: 0, evaluators: [], sumScores: {play:0, vocal:0, mood:0, genre:0, originality:0} };
+    }
+    aggMap[r.videoId].count++;
+    aggMap[r.videoId].totalAvg += r.avg;
+    aggMap[r.videoId].evaluators.push(r.userName || '익명');
+    CRITERIA.forEach(c => aggMap[r.videoId].sumScores[c.key] += r.scores[c.key]);
+  });
+
+  const aggregated = Object.values(aggMap).map(item => {
+    item.avg = item.totalAvg / item.count;
+    item.scores = {};
+    CRITERIA.forEach(c => item.scores[c.key] = item.sumScores[c.key] / item.count);
+    
+    // Nreviewing 텍스트 생성
+    const others = item.count - 1;
+    item.evalText = others > 0 ? `${item.evaluators[0]} 외 ${others}reviewing` : `${item.evaluators[0]}님 1reviewing`;
+    return item;
+  });
+
+  const sorted=aggregated.sort((a,b)=>{
+    const va=sortKey==='avg'?a.avg:a.scores[sortKey];
+    const vb=sortKey==='avg'?b.avg:b.scores[sortKey];
+    return vb-va;
+  });
+
+  const rc=i=>i===0?'gold':i===1?'silver':i===2?'bronze':'';
+  const interactions = loadInteractions();
+  list.innerHTML=sorted.map((r,i)=>{
+    const inter = interactions[r.videoId] || {likes:[], comments:[]};
+    return `
+    <div class="rank-row${selectedRankId===r.videoId?' active':''}" onclick="selectRow('${r.videoId}')">
+      <div class="rank-n ${rc(i)}">${i+1}</div>
+      <img class="rank-thumb" src="https://img.youtube.com/vi/${r.videoId}/mqdefault.jpg" alt="" onerror="this.style.visibility='hidden'"/>
+      <div>
+        <div class="rank-song">${r.title}</div>
+        <div class="rank-artist">${r.artist}</div>
+      </div>
+      <div class="rank-score-cell">
+        <div style="display:flex;align-items:baseline;gap:4px;">
+          <div class="rank-score-n">${r.avg.toFixed(2)}</div>
+          <div class="rank-score-d">/ 10</div>
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:center;">
+          <span style="font-size:10px;color:var(--text3);">👥 ${r.count}명</span>
+          <span style="font-size:10px;color:var(--text3);">👍 ${inter.likes.length}</span>
+          <span style="font-size:10px;color:var(--text3);">💬 ${inter.comments.length}</span>
+        </div>
+      </div>
+      <div class="rank-stars-cell">${renderStars(r.avg)}</div>
+    </div>`}).join('');
+  
+  if(selectedRankId){const f=aggregated.find(r=>r.videoId===selectedRankId);if(f)renderDetail(f);}
+}
+
+function selectRow(videoId){
+  if(selectedRankId===videoId){selectedRankId=null;document.getElementById('rank-detail').innerHTML='';renderRank();return;}
+  selectedRankId=videoId;
+  renderRank();
+}
+
+// 공감 처리 함수
+function toggleLike(vid) {
+  if(!currentUser) { toast('⚠️ Please log in first.'); return; }
+  const interactions = loadInteractions();
+  const isLiked = interactions[vid]?.likes.includes(currentUser.id);
+  const likePath = db.ref(`interactions/${vid}/likes/${currentUser.id}`);
+  if(isLiked) likePath.remove();
+  else likePath.set(true);
+}
+
+// 댓글 처리 함수
+function addComment(vid) {
+  if(!currentUser) { toast('⚠️ Please log in first.'); return; }
+  const input = document.getElementById('comment-input');
+  const text = input.value.trim();
+  if(!text) { toast('⚠️ Please enter a comment.'); return; }
+  
+  db.ref(`interactions/${vid}/comments`).push({
+    id: Date.now(), userId: currentUser.id, userName: currentUser.name,
+    text: text, date: new Date().toLocaleDateString('ko-KR')
+  });
+  input.value = '';
+  toast('💬 Comment posted!');
+}
+
+function renderDetail(r){
+  const vid = r.videoId;
+  const interactions = loadInteractions();
+  const interaction = interactions[vid] || { likes: [], comments: [] };
+  const isLiked = currentUser && interaction.likes.includes(currentUser.id);
+  
+  document.getElementById('rank-detail').innerHTML=`
+    <div class="detail-panel">
+      <div class="detail-head">
+        <div>
+          <div class="detail-title">${r.title}</div>
+          <div class="detail-artist">${r.artist}</div>
+          <div style="font-size:12px;color:var(--text3);margin-top:8px;font-weight:500;">👥 ${r.evalText}</div>
+        </div>
+        <div style="text-align:right">
+          <div class="detail-score-big">${r.avg.toFixed(2)}</div>
+          <div class="rank-stars-cell" style="justify-content:flex-end;margin-top:4px">${renderStars(r.avg)}</div>
+        </div>
+      </div>
+      
+      ${vid?`<div class="detail-yt"><iframe src="https://www.youtube-nocookie.com/embed/${vid}?${getYtParams()}" referrerpolicy="strict-origin-when-cross-origin" allow="accelerometer;autoplay;clipboard-write;encrypted-media;gyroscope;picture-in-picture" allowfullscreen></iframe></div>`:''}
+      
+      <div style="font-size:12px;color:var(--text2);text-transform:uppercase;letter-spacing:.8px;margin-bottom:10px;font-weight:600">Score Breakdown</div>
+      <div class="breakdown">
+        ${CRITERIA.map(c=>`
+          <div class="bd-item">
+            <div class="bd-top">
+              <div class="bd-name"><i class="ti ${c.icon}" style="font-size:13px;vertical-align:-2px;margin-right:4px"></i>${c.name}</div>
+              <div class="bd-val">${r.scores[c.key].toFixed(2)}</div>
+            </div>
+            <div class="bd-bar-wrap"><div class="bd-bar" style="width:${r.scores[c.key]*10}%"></div></div>
+          </div>`).join('')}
+      </div>
+      
+      <div style="margin-top:2rem; padding-top:1.5rem; border-top:1px solid var(--border);">
+        <button class="btn-like ${isLiked ? 'liked' : ''}" onclick="toggleLike('${vid}')">
+          <i class="${isLiked ? 'ti ti-thumb-up-filled' : 'ti ti-thumb-up'}" style="font-size:16px;"></i> 
+          Like ${interaction.likes.length > 0 ? interaction.likes.length : ''}
+        </button>
+
+        <div style="margin-top:1.5rem; font-size:14px; font-weight:600; color:var(--text);">댓글 (${interaction.comments.length})</div>
+        <div style="display:flex; gap:8px; margin-top:10px;">
+          <input type="text" id="comment-input" placeholder="Log in to leave a comment..." style="flex:1; height:44px; border-radius:22px; padding:0 18px; background:var(--bg3); border:1px solid var(--border); color:var(--text); outline:none;">
+          <button onclick="addComment('${vid}')" style="height:44px; padding:0 20px; border-radius:22px; background:var(--amber); color:#000; border:none; font-weight:700; cursor:pointer;">Post</button>
+        </div>
+        
+        <div style="margin-top:1rem; display:flex; flex-direction:column; gap:10px;">
+          ${interaction.comments.length === 0 ? `<div style="font-size:13px; color:var(--text3); text-align:center; padding:1rem 0;">Be the first to comment!</div>` : ''}
+          ${interaction.comments.map(c => `
+            <div style="background:var(--bg3); padding:12px 16px; border-radius:var(--radius); font-size:13px;">
+              <div style="display:flex; justify-content:space-between; margin-bottom:6px; color:var(--text2); font-size:11px;">
+                <strong style="color:var(--amber);">${c.userName}</strong> <span>${c.date}</span>
+              </div>
+              <div style="color:var(--text); line-height:1.5;">${e(c.text)}</div>
+            </div>
+          `).reverse().join('')}
+        </div>
+      </div>
+    </div>`;
+}
+
+function renderTop5(){
+  const list = document.getElementById('top5-list');
+  if(!list) return;
+
+  const ratings = loadRatings();
+  if(!ratings.length){
+    list.innerHTML = `<div class="top5-empty">No ratings yet.</div>`;
+    return;
+  }
+
+  // 랭킹 집계 (renderRank와 동일 로직)
+  const aggMap = {};
+  ratings.forEach(r => {
+    if(!aggMap[r.videoId]) aggMap[r.videoId] = {videoId:r.videoId, title:r.title, artist:r.artist, count:0, totalAvg:0};
+    aggMap[r.videoId].count++;
+    aggMap[r.videoId].totalAvg += r.avg;
+  });
+
+  const top5 = Object.values(aggMap)
+    .map(item => ({...item, avg: item.totalAvg / item.count}))
+    .sort((a, b) => b.avg - a.avg)
+    .slice(0, 5);
+
+  const rankClass = i => i===0?'gold':i===1?'silver':i===2?'bronze':'normal';
+  const rankSymbol = i => i===0?'🥇':i===1?'🥈':i===2?'🥉':`${i+1}`;
+
+  const interactions = loadInteractions();
+
+  list.innerHTML = top5.map((r, i) => {
+    const inter = interactions[r.videoId] || {likes:[], comments:[]};
+    return `
+    <div class="top5-row" id="top5-row-${r.videoId}">
+      <div class="top5-rank ${rankClass(i)}">${rankSymbol(i)}</div>
+      <img class="top5-thumb" src="https://img.youtube.com/vi/${r.videoId}/mqdefault.jpg" alt=""
+        onerror="this.style.display='none'"
+        onclick="showHomeDetail('${r.videoId}')"
+        style="cursor:pointer;" title="View details"/>
+      <div class="top5-info" onclick="showHomeDetail('${r.videoId}')" style="cursor:pointer;">
+        <div class="top5-song">${r.title}</div>
+        <div class="top5-artist">${r.artist}</div>
+      </div>
+      <div style="text-align:right;flex-shrink:0;">
+        <div class="top5-score">${r.avg.toFixed(2)}</div>
+        <div style="font-size:10px;color:var(--text3);margin-top:2px;display:flex;flex-direction:column;gap:1px;align-items:flex-end;">
+          <span>👥 ${r.count} ratings</span>
+          <span>👍 ${inter.likes.length} &nbsp;💬 ${inter.comments.length}</span>
+        </div>
+      </div>
+    </div>
+  `}).join('');
+}
+
+let selectedHomeId = null;
+
+function showHomeDetail(videoId) {
+  const panel = document.getElementById('home-detail');
+
+  // 같은 곡 다시 클릭하면 닫기
+  if(selectedHomeId === videoId) {
+    selectedHomeId = null;
+    panel.innerHTML = '';
+    document.querySelectorAll('.top5-row').forEach(r => r.style.borderColor = '');
+    return;
+  }
+  selectedHomeId = videoId;
+
+  // 선택된 행 하이라이트
+  document.querySelectorAll('.top5-row').forEach(r => r.style.borderColor = '');
+  const activeRow = document.getElementById('top5-row-' + videoId);
+  if(activeRow) activeRow.style.borderColor = 'var(--amber)';
+
+  // 집계 데이터 계산
+  const ratings = loadRatings();
+  const mine = ratings.filter(r => r.videoId === videoId);
+  if(!mine.length) return;
+
+  const title = mine[0].title;
+  const artist = mine[0].artist;
+  const count = mine.length;
+  const avg = mine.reduce((s, r) => s + r.avg, 0) / count;
+  const scores = {};
+  CRITERIA.forEach(c => {
+    scores[c.key] = mine.reduce((s, r) => s + r.scores[c.key], 0) / count;
+  });
+  const others = count - 1;
+  const evalText = others > 0
+    ? `${mine[0].userName} 외 ${others}reviewing`
+    : `${mine[0].userName}님 1reviewing`;
+
+  const interactions = loadInteractions();
+  const interaction = interactions[videoId] || { likes: [], comments: [] };
+  const isLiked = currentUser && interaction.likes.includes(currentUser.id);
+
+  panel.innerHTML = `
+    <div class="detail-panel" style="margin-bottom:1.5rem;">
+      <div class="detail-head">
+        <div>
+          <div class="detail-title">${title}</div>
+          <div class="detail-artist">${artist}</div>
+          <div style="font-size:12px;color:var(--text3);margin-top:8px;font-weight:500;">👥 ${evalText}</div>
+        </div>
+        <div style="text-align:right">
+          <div class="detail-score-big">${avg.toFixed(2)}</div>
+          <div class="rank-stars-cell" style="justify-content:flex-end;margin-top:4px">${renderStars(avg)}</div>
+        </div>
+      </div>
+
+      <div class="detail-yt"><iframe src="https://www.youtube-nocookie.com/embed/${videoId}?${getYtParams()}" referrerpolicy="strict-origin-when-cross-origin" allow="accelerometer;autoplay;clipboard-write;encrypted-media;gyroscope;picture-in-picture" allowfullscreen></iframe></div>
+
+      <div style="font-size:12px;color:var(--text2);text-transform:uppercase;letter-spacing:.8px;margin-bottom:10px;font-weight:600;">Average Score by Criteria</div>
+      <div class="breakdown">
+        ${CRITERIA.map(c => `
+          <div class="bd-item">
+            <div class="bd-top">
+              <div class="bd-name"><i class="ti ${c.icon}" style="font-size:13px;vertical-align:-2px;margin-right:4px"></i>${c.name}</div>
+              <div class="bd-val">${scores[c.key].toFixed(2)}</div>
+            </div>
+            <div class="bd-bar-wrap"><div class="bd-bar" style="width:${scores[c.key]*10}%"></div></div>
+          </div>`).join('')}
+      </div>
+
+      <div style="margin-top:2rem;padding-top:1.5rem;border-top:1px solid var(--border);">
+        <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+          <button class="btn-like ${isLiked ? 'liked' : ''}" onclick="toggleLike('${videoId}');showHomeDetail('${videoId}');showHomeDetail('${videoId}')">
+            <i class="${isLiked ? 'ti ti-thumb-up-filled' : 'ti ti-thumb-up'}" style="font-size:16px;"></i>
+            Like ${interaction.likes.length > 0 ? interaction.likes.length : ''}
+          </button>
+          <button onclick="loadVideo('${videoId}','${title.replace(/'/g,"\\'")}','${artist.replace(/'/g,"\\'")}');selectedHomeId=null;document.getElementById('home-detail').innerHTML='';document.querySelectorAll('.top5-row').forEach(r=>r.style.borderColor='')" 
+            style="height:36px;padding:0 16px;border-radius:20px;border:1px solid var(--border2);background:transparent;color:var(--amber);font-family:var(--sans);font-size:13px;font-weight:600;cursor:pointer;">
+            ✏️ Rate This
+          </button>
+        </div>
+
+        <div style="margin-top:1.5rem;font-size:14px;font-weight:600;color:var(--text);">댓글 (${interaction.comments.length})</div>
+        <div style="display:flex;gap:8px;margin-top:10px;">
+          <input type="text" id="home-comment-input" placeholder="Log in to leave a comment..." 
+            style="flex:1;height:44px;border-radius:22px;padding:0 18px;background:var(--bg3);border:1px solid var(--border);color:var(--text);outline:none;font-family:var(--sans);font-size:14px;">
+          <button onclick="addHomeComment('${videoId}')" 
+            style="height:44px;padding:0 20px;border-radius:22px;background:var(--amber);color:#000;border:none;font-weight:700;cursor:pointer;font-family:var(--sans);">Post</button>
+        </div>
+
+        <div style="margin-top:1rem;display:flex;flex-direction:column;gap:10px;">
+          ${interaction.comments.length === 0
+            ? `<div style="font-size:13px;color:var(--text3);text-align:center;padding:1rem 0;">Be the first to comment!</div>`
+            : interaction.comments.slice().reverse().map(c => `
+              <div style="background:var(--bg3);padding:12px 16px;border-radius:var(--radius);font-size:13px;">
+                <div style="display:flex;justify-content:space-between;margin-bottom:6px;font-size:11px;">
+                  <strong style="color:var(--amber);">${c.userName}</strong><span style="color:var(--text3);">${c.date}</span>
+                </div>
+                <div style="color:var(--text);line-height:1.5;">${e(c.text)}</div>
+              </div>`).join('')}
+        </div>
+      </div>
+    </div>`;
+
+  // 패널로 스크롤
+  setTimeout(() => panel.scrollIntoView({behavior:'smooth', block:'nearest'}), 100);
+}
+
+function addHomeComment(vid) {
+  if(!currentUser) { toast('⚠️ Please log in first.'); return; }
+  const input = document.getElementById('home-comment-input');
+  const text = input.value.trim();
+  if(!text) { toast('⚠️ Please enter a comment.'); return; }
+  db.ref(`interactions/${vid}/comments`).push({
+    id: Date.now(), userId: currentUser.id, userName: currentUser.name,
+    text: text, date: new Date().toLocaleDateString('ko-KR')
+  });
+  input.value = '';
+  toast('💬 Comment posted!');
+}
+
+function switchTab(t){
+  document.querySelectorAll('.section').forEach(s=>s.classList.remove('active'));
+  document.getElementById('section-'+t).classList.add('active');
+  document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active'));
+  const navEl=document.getElementById('nav-'+t);
+  if(navEl)navEl.classList.add('active');
+  // 헤더 홈모드 토글
+  const header = document.getElementById('main-header');
+  if(t==='rate') header.classList.add('home-mode');
+  else header.classList.remove('home-mode');
+  if(t==='rank'){selectedRankId=null;renderRank();}
+  if(t==='my'){renderMyRatings();}
+}
+
+function renderMyRatings(){
+  const area = document.getElementById('my-ratings-area');
+  if(!currentUser){
+    area.innerHTML=`<div class="my-login-prompt">🔒 Please log in to view your rating history.</div>`;
+    return;
+  }
+
+  const all = loadRatings();
+  const mine = all
+    .filter(r => r.userId === currentUser.id)
+    .sort((a, b) => b.id - a.id); // 최신순
+
+  if(!mine.length){
+    area.innerHTML=`<div class="my-empty"><i class="ti ti-music-off"></i><p>No ratings yet.<br>Rate your first song!</p></div>`;
+    return;
+  }
+
+  // 날짜별 그룹핑
+  const groups = {};
+  mine.forEach(r => {
+    const d = r.date || 'Unknown Date';
+    if(!groups[d]) groups[d] = [];
+    groups[d].push(r);
+  });
+
+  const CRIT_LABEL = {play:'Musicianship', vocal:'Vocals', mood:'Vibe', genre:'Genre', originality:'Originality'};
+
+  area.innerHTML = Object.entries(groups).map(([date, items]) => `
+    <div class="my-date-group">
+      <div class="my-date-label">📅 ${date}</div>
+      ${items.map(r => `
+        <div class="my-card" style="margin-bottom:8px;">
+          <img class="my-thumb" src="https://img.youtube.com/vi/${r.videoId}/mqdefault.jpg" alt="썸네일"
+            onerror="this.style.display='none'"
+            onclick="loadVideo('${r.videoId}','${r.title.replace(/'/g,"\\'")}','${r.artist.replace(/'/g,"\\'")}');switchTab('rate')"
+            style="cursor:pointer;" title="Rate this song"/>
+          <div class="my-info">
+            <div class="my-title" onclick="loadVideo('${r.videoId}','${r.title.replace(/'/g,"\\'")}','${r.artist.replace(/'/g,"\\'")}');switchTab('rate')" style="cursor:pointer;">${r.title}</div>
+            <div class="my-artist">${r.artist}</div>
+            <div class="my-scores">
+              ${Object.entries(r.scores).map(([k,v])=>`
+                <div class="my-badge">${CRIT_LABEL[k]||k} <span>${Number(v).toFixed(1)}</span></div>
+              `).join('')}
+            </div>
+          </div>
+          <div>
+            <div class="my-avg">${Number(r.avg).toFixed(2)}</div>
+            <div class="my-avg-sub">/ 10</div>
+            <div style="margin-top:4px;font-size:13px;text-align:right;">${renderStars(r.avg)}</div>
+          </div>
+        </div>
+      `).join('')}
+    </div>
+  `).join('');
+}
+function toast(msg){
+  const el=document.getElementById('toast');
+  el.textContent=msg;el.classList.add('show');
+  setTimeout(()=>el.classList.remove('show'),2800);
+}
+
+// 카카오 인앱브라우저 감지
+(function detectInAppBrowser() {
+  const ua = navigator.userAgent.toLowerCase();
+  const isKakao = ua.includes('kakaotalk');
+  const isNaver = ua.includes('naver');
+  const isInstagram = ua.includes('instagram');
+  const isInApp = isKakao || isNaver || isInstagram;
+  if(isInApp) {
+    document.getElementById('inapp-banner').classList.add('show');
+    // 구글 로그인 버튼 숨기고 안내 텍스트로 대체
+    const homeGoogle = document.getElementById('home-google-signin');
+    if(homeGoogle) homeGoogle.innerHTML = '<div style="font-size:12px;color:var(--text3);text-align:center;padding:4px 0;">⚠️ Google login unavailable in in-app browser</div>';
+  }
+})();
+
+function openExternalBrowser() {
+  const url = location.href;
+  // iOS: 사파리로 열기 시도
+  if(/iphone|ipad|ipod/i.test(navigator.userAgent)) {
+    location.href = 'googlechrome://' + url.replace(/^https?:\/\//, '');
+    setTimeout(() => { location.href = url; }, 500);
+  } else {
+    // Android: 인텐트로 크롬 열기
+    location.href = 'intent://' + url.replace(/^https?:\/\//, '') +
+      '#Intent;scheme=https;package=com.android.chrome;end';
+  }
+}
+
+initAuth();
+buildGrid();
+updateAvg();
+</script>
+</body>
+</html>
