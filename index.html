@@ -230,16 +230,7 @@ input[type=range]::-moz-range-thumb{width:18px;height:18px;border-radius:50%;bac
 
 .toast{position:fixed;bottom:28px;left:50%;transform:translateX(-50%);background:var(--bg3);border:1px solid var(--border2);color:var(--text);padding:10px 20px;border-radius:24px;font-size:14px;z-index:999;opacity:0;transition:opacity .2s;pointer-events:none;white-space:nowrap;}
 .toast.show{opacity:1;}
-/* 카카오 인앱브라우저 안내 배너 */
-.inapp-banner{display:none;position:fixed;bottom:0;left:0;right:0;z-index:9999;
-  background:#FEE500;color:#3A1D1D;padding:14px 16px;font-family:var(--sans);
-  font-size:14px;font-weight:600;box-shadow:0 -2px 12px rgba(0,0,0,.2);}
-.inapp-banner.show{display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
-.inapp-banner-text{flex:1;min-width:0;line-height:1.5;}
-.inapp-banner-btn{background:#3A1D1D;color:#FEE500;border:none;border-radius:20px;
-  padding:8px 16px;font-size:13px;font-weight:700;cursor:pointer;white-space:nowrap;font-family:var(--sans);}
-.inapp-banner-close{background:none;border:none;font-size:20px;cursor:pointer;
-  color:#3A1D1D;padding:0 4px;flex-shrink:0;line-height:1;}
+
 
 /* ---- 홈 모드: 헤더 최소화 ---- */
 header.home-mode { background: transparent; border-bottom: 1px solid transparent; box-shadow: none; }
@@ -572,15 +563,7 @@ header.home-mode [style*="width:1px"] { display: none !important; }
 
 <div class="toast" id="toast"></div>
 
-<!-- 카카오 인앱브라우저 안내 배너 -->
-<div class="inapp-banner" id="inapp-banner">
-  <div class="inapp-banner-text">
-    🔒 Google login is restricted in KakaoTalk's in-app browser.<br>
-    <strong>Please open in Chrome or Safari.</strong>
-  </div>
-  <button class="inapp-banner-btn" onclick="openExternalBrowser()">Open in Browser</button>
-  <button class="inapp-banner-close" onclick="document.getElementById('inapp-banner').classList.remove('show')">✕</button>
-</div>
+
 
 <script>
 // 유튜브 URL에 추가할 공통 파라미터 생성 함수
@@ -1421,34 +1404,6 @@ function toast(msg){
   const el=document.getElementById('toast');
   el.textContent=msg;el.classList.add('show');
   setTimeout(()=>el.classList.remove('show'),2800);
-}
-
-// 카카오 인앱브라우저 감지
-(function detectInAppBrowser() {
-  const ua = navigator.userAgent.toLowerCase();
-  const isKakao = ua.includes('kakaotalk');
-  const isNaver = ua.includes('naver');
-  const isInstagram = ua.includes('instagram');
-  const isInApp = isKakao || isNaver || isInstagram;
-  if(isInApp) {
-    document.getElementById('inapp-banner').classList.add('show');
-    // 구글 로그인 버튼 숨기고 안내 텍스트로 대체
-    const homeGoogle = document.getElementById('home-google-signin');
-    if(homeGoogle) homeGoogle.innerHTML = '<div style="font-size:12px;color:var(--text3);text-align:center;padding:4px 0;">⚠️ Google login unavailable in in-app browser</div>';
-  }
-})();
-
-function openExternalBrowser() {
-  const url = location.href;
-  // iOS: 사파리로 열기 시도
-  if(/iphone|ipad|ipod/i.test(navigator.userAgent)) {
-    location.href = 'googlechrome://' + url.replace(/^https?:\/\//, '');
-    setTimeout(() => { location.href = url; }, 500);
-  } else {
-    // Android: 인텐트로 크롬 열기
-    location.href = 'intent://' + url.replace(/^https?:\/\//, '') +
-      '#Intent;scheme=https;package=com.android.chrome;end';
-  }
 }
 
 initAuth();
