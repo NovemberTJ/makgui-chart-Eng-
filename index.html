@@ -231,7 +231,11 @@ input[type=range]::-moz-range-thumb{width:18px;height:18px;border-radius:50%;bac
 .empty i{font-size:48px;margin-bottom:1rem;display:block;opacity:.4;color:var(--text3);}
 .empty p{font-size:15px;line-height:1.8;color:var(--text2);}
 
-.toast{position:fixed;bottom:28px;left:50%;transform:translateX(-50%);background:var(--bg3);border:1px solid var(--border2);color:var(--text);padding:10px 20px;border-radius:24px;font-size:14px;z-index:999;opacity:0;transition:opacity .2s;pointer-events:none;white-space:nowrap;}
+.btn-share{display:flex;align-items:center;gap:5px;height:34px;padding:0 14px;border-radius:17px;
+  border:1px solid var(--border2);background:transparent;color:var(--text2);
+  font-family:var(--sans);font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap;
+  transition:all .15s;}
+.btn-share:hover{border-color:var(--amber);color:var(--amber);}position:fixed;bottom:28px;left:50%;transform:translateX(-50%);background:var(--bg3);border:1px solid var(--border2);color:var(--text);padding:10px 20px;border-radius:24px;font-size:14px;z-index:999;opacity:0;transition:opacity .2s;pointer-events:none;white-space:nowrap;}
 .toast.show{opacity:1;}
 
 
@@ -444,6 +448,13 @@ header.home-mode [style*="width:1px"] { display: none !important; }
       <div id="header-google-signin"></div>
       <button class="nav-btn" onclick="switchTab('rank')" id="nav-rank">🏆 Rankings</button>
       <button class="nav-btn" onclick="switchTab('my')" id="nav-my" style="display:none;">📝 My Ratings</button>
+      <button class="btn-share" onclick="shareURL()">
+        <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/>
+          <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/>
+        </svg>
+        Share
+      </button>
     </nav>
   </div>
 </header>
@@ -491,6 +502,13 @@ header.home-mode [style*="width:1px"] { display: none !important; }
       <div id="home-google-signin"></div>
       <button class="home-action-btn" onclick="switchTab('rank')">🏆 Full Rankings</button>
       <button class="home-action-btn" id="home-my-btn" onclick="switchTab('my')" style="display:none;">📝 My Ratings</button>
+      <button class="home-action-btn" onclick="shareURL()" style="display:flex;align-items:center;justify-content:center;gap:6px;">
+        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/>
+          <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/>
+        </svg>
+        Share Site
+      </button>
     </div>
   </div>
 
@@ -1406,6 +1424,29 @@ function renderMyRatings(){
     </div>
   `).join('');
 }
+function shareURL() {
+  const url = 'https://novembertj.github.io/makgui-chart-Eng-/';
+  if(navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(url).then(() => {
+      toast('🔗 Link copied! Share it anywhere.');
+    }).catch(() => fallbackCopy(url));
+  } else {
+    fallbackCopy(url);
+  }
+}
+
+function fallbackCopy(url) {
+  const el = document.createElement('textarea');
+  el.value = url;
+  el.style.position = 'fixed';
+  el.style.opacity = '0';
+  document.body.appendChild(el);
+  el.select();
+  document.execCommand('copy');
+  document.body.removeChild(el);
+  toast('🔗 Link copied! Share it anywhere.');
+}
+
 function toast(msg){
   const el=document.getElementById('toast');
   el.textContent=msg;el.classList.add('show');
